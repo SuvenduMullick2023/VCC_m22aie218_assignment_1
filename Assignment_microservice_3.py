@@ -15,6 +15,7 @@ app = FastAPI()
 
 cpu_ram_data = []
 cpu_load_threads = []
+cpu_overload_start = None
 running = False
 
 # Initialize SQLite database
@@ -31,7 +32,9 @@ cursor.execute('''
 conn.commit()
 
 async def update_usage():
-    """Continuously updates CPU & RAM usage every 5 seconds."""
+    """Continuously updates CPU & RAM usage every 5 seconds and checks overload."""
+    global cpu_overload_start, running
+
     while True:
         cpu_usage = psutil.cpu_percent(interval=1)
         ram_usage = psutil.virtual_memory().percent
@@ -47,12 +50,42 @@ async def update_usage():
         if len(cpu_ram_data) > 20:
             cpu_ram_data.pop(0)
 
+        # Check if CPU usage is above 75%
+        if cpu_usage > 75:
+            if cpu_overload_start is None:
+                cpu_overload_start = time.time()
+            elif time.time() - cpu_overload_start >= 10:  # If overload persists for 10 seconds
+                if not running:
+                    print("CPU overload detected! Increasing CPU load...")
+                    start_cpu_load()
+        else:
+            cpu_overload_start = None  # Reset overload timer
+
         await asyncio.sleep(5)
 
 def cpu_stress_task():
     """Consumes CPU cycles artificially."""
     while running:
         _ = [x**2 for x in range(10**6)]  # Heavy computation
+
+def start_cpu_load():
+    """Starts a CPU-intensive process."""
+    global running, cpu_load_threads
+    if not running:
+        running = True
+        for _ in range(psutil.cpu_count() // 2):  # Use half the CPU cores
+            thread = threading.Thread(target=cpu_stress_task)
+            thread.start()
+            cpu_load_threads.append(thread)
+
+def stop_cpu_load():
+    """Stops the CPU-intensive process."""
+    global running, cpu_load_threads
+    running = False
+    for thread in cpu_load_threads:
+        thread.join()
+    cpu_load_threads.clear()
+    print("CPU load stopped.")
 
 @app.on_event("startup")
 async def startup_event():
@@ -69,28 +102,6 @@ async def get_cpu_ram_usage():
         "cpu_usage": cpu_usage,
         "ram_usage": ram_usage
     }
-
-@app.get("/start_cpu_load")
-async def start_cpu_load():
-    """Starts a CPU-intensive process."""
-    global running, cpu_load_threads
-    if not running:
-        running = True
-        for _ in range(psutil.cpu_count() // 2):  # Use half the CPU cores
-            thread = threading.Thread(target=cpu_stress_task)
-            thread.start()
-            cpu_load_threads.append(thread)
-    return {"message": "CPU load increased"}
-
-@app.get("/stop_cpu_load")
-async def stop_cpu_load():
-    """Stops the CPU-intensive process."""
-    global running, cpu_load_threads
-    running = False
-    for thread in cpu_load_threads:
-        thread.join()
-    cpu_load_threads.clear()
-    return {"message": "CPU load stopped"}
 
 @app.get("/cpu_ram_graph")
 async def get_cpu_ram_graph():
@@ -135,6 +146,9 @@ async def websocket_endpoint(websocket: WebSocket):
         print("WebSocket error:", e)
     finally:
         await websocket.close()
+
+
+
 
 if __name__ == "__main__":
     import uvicorn
