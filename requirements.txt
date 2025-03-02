@@ -3,3 +3,4 @@ uvicorn
 psutil 
 asyncio 
 google-cloud-compute
+matplotlib
