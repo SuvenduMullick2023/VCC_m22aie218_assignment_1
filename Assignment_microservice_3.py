@@ -1,4 +1,4 @@
-#pip install fastapi uvicorn psutil matplotlib aiofiles sqlite3 aioredis websockets
+# pip install fastapi uvicorn psutil matplotlib aiofiles sqlite3 aioredis websockets
 
 from fastapi import FastAPI, BackgroundTasks, WebSocket
 from fastapi.responses import StreamingResponse
@@ -10,13 +10,13 @@ import io
 import sqlite3
 import matplotlib.pyplot as plt
 from datetime import datetime
+import subprocess
 
 app = FastAPI()
 
 cpu_ram_data = []
-cpu_load_threads = []
+stress_ng_process = None
 cpu_overload_start = None
-running = False
 
 # Initialize SQLite database
 conn = sqlite3.connect("system_usage.db", check_same_thread=False)
@@ -33,7 +33,7 @@ conn.commit()
 
 async def update_usage():
     """Continuously updates CPU & RAM usage every 5 seconds and checks overload."""
-    global cpu_overload_start, running
+    global cpu_overload_start
 
     while True:
         cpu_usage = psutil.cpu_percent(interval=1)
@@ -41,7 +41,7 @@ async def update_usage():
         timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # Store in database
-        cursor.execute("INSERT INTO usage (timestamp, cpu_usage, ram_usage) VALUES (?, ?, ?)", 
+        cursor.execute("INSERT INTO usage (timestamp, cpu_usage, ram_usage) VALUES (?, ?, ?)",
                        (timestamp, cpu_usage, ram_usage))
         conn.commit()
 
@@ -55,37 +55,35 @@ async def update_usage():
             if cpu_overload_start is None:
                 cpu_overload_start = time.time()
             elif time.time() - cpu_overload_start >= 10:  # If overload persists for 10 seconds
-                if not running:
-                    print("CPU overload detected! Increasing CPU load...")
+                if stress_ng_process is None or stress_ng_process.poll() is not None:
+                    print("CPU overload detected! Increasing CPU load with stress-ng...")
                     start_cpu_load()
         else:
             cpu_overload_start = None  # Reset overload timer
 
         await asyncio.sleep(5)
 
-def cpu_stress_task():
-    """Consumes CPU cycles artificially."""
-    while running:
-        _ = [x**2 for x in range(10**6)]  # Heavy computation
-
 def start_cpu_load():
-    """Starts a CPU-intensive process."""
-    global running, cpu_load_threads
-    if not running:
-        running = True
-        for _ in range(psutil.cpu_count() // 2):  # Use half the CPU cores
-            thread = threading.Thread(target=cpu_stress_task)
-            thread.start()
-            cpu_load_threads.append(thread)
+    """Starts stress-ng process to increase CPU load."""
+    global stress_ng_process
+    if stress_ng_process is None or stress_ng_process.poll() is not None:
+        try:
+            stress_ng_process = subprocess.Popen(["stress-ng", "--cpu", str(psutil.cpu_count() // 2), "timeout", "10s"]) # using half the cores for 10 seconds.
+        except FileNotFoundError:
+            print("stress-ng not found. Please install it.")
+        except Exception as e:
+            print(f"Error starting stress-ng: {e}")
 
 def stop_cpu_load():
-    """Stops the CPU-intensive process."""
-    global running, cpu_load_threads
-    running = False
-    for thread in cpu_load_threads:
-        thread.join()
-    cpu_load_threads.clear()
-    print("CPU load stopped.")
+    """Stops the stress-ng process."""
+    global stress_ng_process
+    if stress_ng_process and stress_ng_process.poll() is None:
+        stress_ng_process.terminate()
+        stress_ng_process.wait()  # Wait for the process to terminate
+        stress_ng_process = None
+        print("CPU load stopped.")
+    else:
+        print("No stress-ng process to stop.")
 
 @app.on_event("startup")
 async def startup_event():
@@ -107,7 +105,7 @@ async def get_cpu_ram_usage():
 async def get_cpu_ram_graph():
     """Generates a live CPU & RAM usage graph and sends it as an image."""
     times, cpu_usages, ram_usages = zip(*cpu_ram_data) if cpu_ram_data else ([], [], [])
-    
+
     plt.figure(figsize=(8, 4))
     plt.plot(times, cpu_usages, marker='o', linestyle='-', color='b', label="CPU Usage")
     plt.plot(times, ram_usages, marker='s', linestyle='-', color='r', label="RAM Usage")
@@ -147,32 +145,21 @@ async def websocket_endpoint(websocket: WebSocket):
     finally:
         await websocket.close()
 
-
-
-
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="192.168.148.123", port=8000)
 
+# Run the app in the VM
+# python cpu_monitor.py
 
-#run the app in the VM    
-#python cpu_monitor.py
+# Monitor CPU usage
+# curl http://192.168.148.123:8000/cpu_ram
 
-#monitor cpu usage
-#curl http://127.0.0.1:8000/cpu
+# Increase CPU load
+# curl http://192.168.148.123:8000/start_cpu_load
 
-#increase CPU load
-#curl http://127.0.0.1:8000/start_cpu_load
+# Reduce CPU load
+# curl http://192.168.148.123:8000/stop_cpu_load
 
-#reduce CPU load
-#curl http://127.0.0.1:8000/stop_cpu_load
-
-#cpu graph
-#http://127.0.0.1:8000/cpu_graph
-
-
-   
-
-		
-		
-    	
+# CPU graph
+# http://192.168.148.123:8000/cpu_ram_graph
