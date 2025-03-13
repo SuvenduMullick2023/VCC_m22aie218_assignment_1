@@ -103,6 +103,7 @@ async def start_cpu_load():
     if stress_ng_process is None or stress_ng_process.poll() is not None:
         try:
             stress_ng_process = subprocess.Popen(["stress-ng", "--cpu", str(psutil.cpu_count() // 2), "--timeout", "20s"]) # using half the cores for 20 seconds.
+            create_gcp_instance()
             return {"message": "CPU load started."}
         except FileNotFoundError:
             return {"error": "stress-ng not found. Please install it."}
