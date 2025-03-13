@@ -94,6 +94,7 @@ async def update_usage():
 
         await asyncio.sleep(5)
 
+@app.on_event("/start_cpu_load")
 def start_cpu_load():
     """Starts stress-ng process to increase CPU load."""
     global stress_ng_process
@@ -105,6 +106,7 @@ def start_cpu_load():
         except Exception as e:
             print(f"Error starting stress-ng: {e}")
 
+@app.on_event("/stop_cpu_load")
 def stop_cpu_load():
     """Stops the stress-ng process."""
     global stress_ng_process
