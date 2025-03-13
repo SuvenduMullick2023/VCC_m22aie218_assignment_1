@@ -1,4 +1,4 @@
-# pip install fastapi uvicorn psutil matplotlib aiofiles sqlite3 aioredis websockets
+# pip install fastapi uvicorn psutil matplotlib aiofiles sqlite3 aioredis websockets google-cloud-compute
 
 from fastapi import FastAPI, BackgroundTasks, WebSocket
 from fastapi.responses import StreamingResponse
@@ -12,33 +12,35 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import subprocess
 
-
 from google.cloud import compute_v1
 
-PROJECT_ID = "project-1-autoscale-gcp-vm"
-ZONE = "us-central1-a"
-MACHINE_TYPE = "e2-micro"
-IMAGE_NAME = "your-vm-image"
+PROJECT_ID = "project-1-autoscale-gcp-vm" #Replace with your project ID
+ZONE = "us-central1-a" #replace with your zone
+MACHINE_TYPE = "e2-micro" #replace with your machine type
+IMAGE_NAME = "debian-11-bullseye-v20240409" #replace with your image name or family
 
 def create_gcp_instance():
     instance_client = compute_v1.InstancesClient()
 
     instance = compute_v1.Instance()
-    instance.name = "auto-scaled-instance"
+    instance.name = f"auto-scaled-instance-{datetime.now().strftime('%Y%m%d%H%M%S')}" #Unique name
     instance.machine_type = f"zones/{ZONE}/machineTypes/{MACHINE_TYPE}"
-    
+
     disk = compute_v1.AttachedDisk()
-    disk.initialize_params.source_image = f"projects/{PROJECT_ID}/global/images/{IMAGE_NAME}"
+    disk.initialize_params.source_image = f"projects/debian-cloud/global/images/debian-11" #using a public image
     disk.auto_delete = True
     disk.boot = True
     instance.disks = [disk]
 
     instance.network_interfaces = [compute_v1.NetworkInterface(name="global/networks/default")]
 
-    operation = instance_client.insert(project=PROJECT_ID, zone=ZONE, instance_resource=instance)
-    print(f"Launched GCP VM: {operation}")
-
-
+    try:
+        operation = instance_client.insert(project=PROJECT_ID, zone=ZONE, instance_resource=instance)
+        print(f"Launched GCP VM: {operation}")
+        operation.result() # Wait for the operation to complete
+        print(f"Instance {instance.name} created successfully.")
+    except Exception as e:
+        print(f"Error creating instance: {e}")
 
 
 
@@ -86,7 +88,7 @@ async def update_usage():
                 cpu_overload_start = time.time()
             elif time.time() - cpu_overload_start >= 10:  # If overload persists for 10 seconds
                 if stress_ng_process is None or stress_ng_process.poll() is not None:
-                    print("CPU overload detected! Increasing CPU load with stress-ng...")
+                    print("CPU overload detected! Increasing CPU load with stress-ng and creating instance...")
                     start_cpu_load()
                     create_gcp_instance()
         else:
@@ -94,29 +96,31 @@ async def update_usage():
 
         await asyncio.sleep(5)
 
-@app.on_event("/start_cpu_load")
-def start_cpu_load():
+@app.get("/start_cpu_load") #changed to get
+async def start_cpu_load():
     """Starts stress-ng process to increase CPU load."""
     global stress_ng_process
     if stress_ng_process is None or stress_ng_process.poll() is not None:
         try:
-            stress_ng_process = subprocess.Popen(["stress-ng", "--cpu", str(psutil.cpu_count() // 2), "--timeout", "20s"]) # using half the cores for 10 seconds.
+            stress_ng_process = subprocess.Popen(["stress-ng", "--cpu", str(psutil.cpu_count() // 2), "--timeout", "20s"]) # using half the cores for 20 seconds.
+            return {"message": "CPU load started."}
         except FileNotFoundError:
-            print("stress-ng not found. Please install it.")
+            return {"error": "stress-ng not found. Please install it."}
         except Exception as e:
-            print(f"Error starting stress-ng: {e}")
+            return {"error": f"Error starting stress-ng: {e}"}
+    return {"message":"CPU load already running"}
 
-@app.on_event("/stop_cpu_load")
-def stop_cpu_load():
+@app.get("/stop_cpu_load") #changed to get
+async def stop_cpu_load():
     """Stops the stress-ng process."""
     global stress_ng_process
     if stress_ng_process and stress_ng_process.poll() is None:
         stress_ng_process.terminate()
         stress_ng_process.wait()  # Wait for the process to terminate
         stress_ng_process = None
-        print("CPU load stopped.")
+        return {"message": "CPU load stopped."}
     else:
-        print("No stress-ng process to stop.")
+        return {"message": "No stress-ng process to stop."}
 
 @app.on_event("startup")
 async def startup_event():
@@ -186,13 +190,13 @@ if __name__ == "__main__":
 # python cpu_monitor.py
 
 # Monitor CPU usage
-# curl http://192.168.148.123:8000/cpu_ram
+# curl http://192.168.247.123:8000/cpu_ram
 
 # Increase CPU load
-# curl http://192.168.148.123:8000/start_cpu_load
+# curl http://192.168.247.123:8000/start_cpu_load
 
 # Reduce CPU load
-# curl http://192.168.148.123:8000/stop_cpu_load
+# curl http://192.168.247.123:8000/stop_cpu_load
 
 # CPU graph
-# http://192.168.148.123:8000/cpu_ram_graph
+# http://192.168.
