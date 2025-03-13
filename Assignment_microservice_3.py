@@ -12,6 +12,36 @@ import matplotlib.pyplot as plt
 from datetime import datetime
 import subprocess
 
+
+from google.cloud import compute_v1
+
+PROJECT_ID = "project-1-autoscale-gcp-vm"
+ZONE = "us-central1-a"
+MACHINE_TYPE = "e2-micro"
+IMAGE_NAME = "your-vm-image"
+
+def create_gcp_instance():
+    instance_client = compute_v1.InstancesClient()
+
+    instance = compute_v1.Instance()
+    instance.name = "auto-scaled-instance"
+    instance.machine_type = f"zones/{ZONE}/machineTypes/{MACHINE_TYPE}"
+    
+    disk = compute_v1.AttachedDisk()
+    disk.initialize_params.source_image = f"projects/{PROJECT_ID}/global/images/{IMAGE_NAME}"
+    disk.auto_delete = True
+    disk.boot = True
+    instance.disks = [disk]
+
+    instance.network_interfaces = [compute_v1.NetworkInterface(name="global/networks/default")]
+
+    operation = instance_client.insert(project=PROJECT_ID, zone=ZONE, instance_resource=instance)
+    print(f"Launched GCP VM: {operation}")
+
+
+
+
+
 app = FastAPI()
 
 cpu_ram_data = []
@@ -58,6 +88,7 @@ async def update_usage():
                 if stress_ng_process is None or stress_ng_process.poll() is not None:
                     print("CPU overload detected! Increasing CPU load with stress-ng...")
                     start_cpu_load()
+                    create_gcp_instance()
         else:
             cpu_overload_start = None  # Reset overload timer
 
