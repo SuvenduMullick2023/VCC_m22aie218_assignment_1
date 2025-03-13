@@ -122,7 +122,7 @@ async def stop_cpu_load():
     else:
         return {"message": "No stress-ng process to stop."}
 
-@app.on_event("/startup")
+@app.get("/startup")
 async def startup_event():
     """Starts CPU & RAM monitoring when FastAPI launches."""
     asyncio.create_task(update_usage())
