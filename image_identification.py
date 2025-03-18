@@ -82,10 +82,11 @@ async def process_image(file: UploadFile):
 
         image = transform(image)
         image = image.unsqueeze(0)  # Add batch dimension
-
+        
+        image = image.to('cpu')  # Ensure data is on the CPU
         # Perform inference
         with torch.no_grad():  # Disable gradient calculation for inference
-            prediction = model(image)
+            prediction = model.to('cpu')(image)
             predicted_class = torch.argmax(prediction).item()  # Get the class with the highest probability
 
         return {"predicted_class": predicted_class}
