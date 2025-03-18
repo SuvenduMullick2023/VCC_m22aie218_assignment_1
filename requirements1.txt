@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+psutil
+matplotlib
+aiofiles
+sqlite3
+aioredis  # You might not be using this, but it's in the original list
+websockets
+google-cloud-compute
+google-api-python-client
+Pillow
+torch
