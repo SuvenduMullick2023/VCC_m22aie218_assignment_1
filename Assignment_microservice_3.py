@@ -16,7 +16,7 @@ from google.cloud import compute_v1
 
 PROJECT_ID = "project-1-autoscale-gcp-vm" #Replace with your project ID
 ZONE = "us-central1-c" #replace with your zone
-MACHINE_TYPE = "e2-micro" #replace with your machine type
+MACHINE_TYPE = "e2-medium" #replace with your machine type
 IMAGE_NAME = "Ubuntu 20.04 LTS" #replace with your image name or family
 
 def create_gcp_instance():
