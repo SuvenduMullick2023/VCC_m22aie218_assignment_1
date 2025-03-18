@@ -90,7 +90,7 @@ async def update_usage():
                 if stress_ng_process is None or stress_ng_process.poll() is not None:
                     print("CPU overload detected! Increasing CPU load with stress-ng and creating instance...")
                     start_cpu_load()
-                    create_gcp_instance()
+                    
         else:
             cpu_overload_start = None  # Reset overload timer
 
@@ -123,7 +123,7 @@ async def stop_cpu_load():
     else:
         return {"message": "No stress-ng process to stop."}
 
-@app.on_event("/startup")
+@app.on_event("startup")
 async def startup_event():
     """Starts CPU & RAM monitoring when FastAPI launches."""
     asyncio.create_task(update_usage())
