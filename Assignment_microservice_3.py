@@ -123,7 +123,7 @@ async def stop_cpu_load():
     else:
         return {"message": "No stress-ng process to stop."}
 
-@app.get("/startup")
+@app.on_event("/startup")
 async def startup_event():
     """Starts CPU & RAM monitoring when FastAPI launches."""
     asyncio.create_task(update_usage())
@@ -185,7 +185,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="192.168.132.243", port=8000)
+    uvicorn.run(app, host="192.168.236.243", port=8000)
 
 # Run the app in the VM
 # python cpu_monitor.py
