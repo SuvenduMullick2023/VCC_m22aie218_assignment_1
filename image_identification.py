@@ -5,28 +5,30 @@ from googleapiclient.http import MediaIoBaseDownload
 from google.oauth2 import service_account
 import io
 import os
-import tensorflow as tf  # Or your ML framework (e.g., torch)
-from PIL import Image  # For image processing
+import torch  # Changed from tensorflow
+from PIL import Image
 import numpy as np
 import logging
+from torchvision import transforms  # PyTorch image transforms
 
 app = FastAPI()
 
 # Configuration (Replace with your values)
-MODEL_FILE_ID = "YOUR_GOOGLE_DRIVE_FILE_ID"  # The ID of your model file in Google Drive
-#export SERVICE_ACCOUNT_FILE = "/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json"  # Path to your service account key file
-#GOOGLE_APPLICATION_CREDENTIALS="/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json" 
-MODEL_LOCAL_PATH = "model"  # Directory to store the downloaded model
+#"https://drive.google.com/file/d/1-JWQ0SmgvJD8GC3kT3j_5L78T-tdPDrM/view?usp=drive_link"
+#https://drive.google.com/file/d/18B0RwsxvlW4CjX2PNqVIAp7vOBoe6pJW/view?usp=drive_link"
+MODEL_FILE_ID = "18B0RwsxvlW4CjX2PNqVIAp7vOBoe6pJW" 
+#SERVICE_ACCOUNT_FILE = "/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json"
+MODEL_LOCAL_PATH = "model"
 
 # Global variables
-model = None  # ML model instance
-drive_service = None  # Google Drive API service instance
+model = None
+drive_service = None
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
 
 def load_model_from_drive():
-    """Downloads the model from Google Drive and loads it."""
+    """Downloads the model from Google Drive and loads it (PyTorch version)."""
     global model, drive_service
 
     try:
@@ -50,14 +52,15 @@ def load_model_from_drive():
             status, done = downloader.next_chunk()
             logging.info(f"Download %d%%" % int(status.progress() * 100))
 
-        # Save the model locally (you might need to adjust this based on your model format)
-        model_path = os.path.join(MODEL_LOCAL_PATH, "model_file")  # Adjust as needed
+        # Save the model locally (adjust based on your model format)
+        model_path = os.path.join(MODEL_LOCAL_PATH, "model.pth")  # Assuming a .pth file extension
         with open(model_path, "wb") as f:
             fh.seek(0)
             f.write(fh.getvalue())
 
-        # Load the model (adjust based on your ML framework)
-        model = tf.keras.models.load_model(model_path)  # Example for TensorFlow
+        # Load the model (PyTorch)
+        model = torch.load(model_path)
+        model.eval()  # Set the model to evaluation mode
         logging.info("Model loaded successfully.")
 
     except Exception as e:
@@ -65,19 +68,27 @@ def load_model_from_drive():
         raise
 
 async def process_image(file: UploadFile):
-    """Processes the uploaded image and performs classification."""
+    """Processes the uploaded image and performs classification (PyTorch version)."""
     try:
         contents = await file.read()
-        image = Image.open(io.BytesIO(contents)).convert("RGB")  # Adjust as needed
-        image = image.resize((224, 224))  # Resize as needed for your model
-        image_array = np.array(image) / 255.0  # Normalize
-        image_array = np.expand_dims(image_array, axis=0)  # Add batch dimension
+        image = Image.open(io.BytesIO(contents)).convert("RGB")
+
+        # Define transformations (adjust as needed for your model)
+        transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=, std=)  # Example normalization
+        ])
+
+        image = transform(image)
+        image = image.unsqueeze(0)  # Add batch dimension
 
         # Perform inference
-        prediction = model.predict(image_array)  # Adjust based on your model output
-        predicted_class = np.argmax(prediction)  # Get the class with the highest probability
+        with torch.no_grad():  # Disable gradient calculation for inference
+            prediction = model(image)
+            predicted_class = torch.argmax(prediction).item()  # Get the class with the highest probability
 
-        return {"predicted_class": int(predicted_class)}  # Ensure JSON serializable
+        return {"predicted_class": predicted_class}
 
     except Exception as e:
         logging.error(f"Error processing image: {e}")
@@ -90,9 +101,7 @@ async def startup_event():
         load_model_from_drive()
     except Exception as e:
         logging.error("Application startup failed: Model loading error")
-        # Handle the error appropriately, e.g., by raising an exception to prevent the app from starting
-        # or by setting a flag to indicate that the model is not loaded.
-        raise  # Re-raise the exception to stop the app
+        raise
 
 @app.post("/predict")
 async def predict(file: UploadFile = File(...)):
