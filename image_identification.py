@@ -17,7 +17,7 @@ app = FastAPI()
 #"https://drive.google.com/file/d/1-JWQ0SmgvJD8GC3kT3j_5L78T-tdPDrM/view?usp=drive_link"
 #https://drive.google.com/file/d/18B0RwsxvlW4CjX2PNqVIAp7vOBoe6pJW/view?usp=drive_link"
 MODEL_FILE_ID = "18B0RwsxvlW4CjX2PNqVIAp7vOBoe6pJW" 
-#SERVICE_ACCOUNT_FILE = "/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json"
+SERVICE_ACCOUNT_FILE = "/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json"
 MODEL_LOCAL_PATH = "model"
 
 # Global variables
