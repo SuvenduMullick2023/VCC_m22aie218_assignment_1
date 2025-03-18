@@ -14,20 +14,22 @@ import subprocess
 
 from google.cloud import compute_v1
 
-PROJECT_ID = "project-1-autoscale-gcp-vm" #Replace with your project ID
-ZONE = "us-central1-c" #replace with your zone
-MACHINE_TYPE = "e2-medium" #replace with your machine type
-IMAGE_NAME = "Ubuntu 20.04 LTS" #replace with your image name or family
+
+PROJECT_ID = "project-1-autoscale-gcp-vm"
+ZONE = "us-central1-c"
+MACHINE_TYPE = "e2-medium"
+IMAGE_PROJECT = "ubuntu-os-cloud"  # Project containing Ubuntu images
+IMAGE_FAMILY = "ubuntu-2004-lts"  # Image family for Ubuntu 20.04 LTS
 
 def create_gcp_instance():
     instance_client = compute_v1.InstancesClient()
 
     instance = compute_v1.Instance()
-    instance.name = f"auto-scaled-instance-{datetime.now().strftime('%Y%m%d%H%M%S')}" #Unique name
+    instance.name = f"auto-scaled-instance-{datetime.now().strftime('%Y%m%d%H%M%S')}"
     instance.machine_type = f"zones/{ZONE}/machineTypes/{MACHINE_TYPE}"
 
     disk = compute_v1.AttachedDisk()
-    disk.initialize_params.source_image = f"projects/debian-cloud/global/images/debian-11" #using a public image
+    disk.initialize_params.source_image = f"projects/{IMAGE_PROJECT}/global/images/family/{IMAGE_FAMILY}"  # Corrected image source
     disk.auto_delete = True
     disk.boot = True
     instance.disks = [disk]
@@ -37,7 +39,7 @@ def create_gcp_instance():
     try:
         operation = instance_client.insert(project=PROJECT_ID, zone=ZONE, instance_resource=instance)
         print(f"Launched GCP VM: {operation}")
-        operation.result() # Wait for the operation to complete
+        operation.result()
         print(f"Instance {instance.name} created successfully.")
     except Exception as e:
         print(f"Error creating instance: {e}")
