@@ -38,13 +38,13 @@ def configure_ssh_keys():
 
 def create_firewall_rule():
     try:
-        print("Creating firewall rule for backend server on port 9000...")
+        print("Creating firewall rule for backend server on port 5000...")
         subprocess.run([
-            "gcloud", "compute", "firewall-rules", "create", "allow-backend-9000",
-            "--allow", "tcp:9000",
+            "gcloud", "compute", "firewall-rules", "create", "allow-backend-5000",
+            "--allow", "tcp:5000",
             "--source-ranges", "0.0.0.0/0",
             "--target-tags", "backend-server",
-            "--description", "Allow incoming traffic on port 9000 for backend server"
+            "--description", "Allow incoming traffic on port 5000 for backend server"
         ], check=True)
         print("Firewall rule created successfully.")
     except subprocess.CalledProcessError as e:
@@ -75,7 +75,7 @@ def install_docker_and_run_container(instance_name, zone):
         sudo usermod -aG docker $USER
         newgrp docker
         sudo docker pull suvendu2023/flask-news-ai
-        sudo docker run -d -p 9000:9000 suvendu2023/flask-news-ai
+        sudo docker run -d -p 5000:5000 suvendu2023/flask-news-ai
         """
         
         subprocess.run([
@@ -106,7 +106,7 @@ def create_gcp_instance():
     disk.boot = True
     instance.disks = [disk]
 
-    instance.network_interfaces = [compute_v1.NetworkInterface(name="global/networks/default")]
+    #instance.network_interfaces = [compute_v1.NetworkInterface(name="global/networks/default")]
 
     try:
         operation = instance_client.insert(project=PROJECT_ID, zone=ZONE, instance_resource=instance)
