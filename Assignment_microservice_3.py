@@ -11,7 +11,7 @@ import sqlite3
 import matplotlib.pyplot as plt
 from datetime import datetime
 import subprocess
-
+import os
 from google.cloud import compute_v1
 
 app = FastAPI()
