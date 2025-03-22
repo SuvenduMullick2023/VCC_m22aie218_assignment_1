@@ -16,6 +16,16 @@ from google.cloud import compute_v1
 
 app = FastAPI()
 
+
+def authenticate_gcloud():
+    try:
+        print("Authenticating gcloud account...")
+        subprocess.run(["gcloud", "auth", "login"], check=True)
+        subprocess.run(["gcloud", "config", "set", "account", "$(gcloud auth list --format='value(account)' | head -n 1)"], check=True)
+        print("Authentication successful.")
+    except subprocess.CalledProcessError as e:
+        print("Failed to authenticate gcloud account:", str(e))
+
 def configure_ssh_keys():
     try:
         print("Configuring SSH keys in project metadata...")
@@ -201,6 +211,7 @@ async def start_cpu_load():
     if stress_ng_process is None or stress_ng_process.poll() is not None:
         try:
             stress_ng_process = subprocess.Popen(["stress-ng", "--cpu", str(psutil.cpu_count() // 2), "--timeout", "20s"]) # using half the cores for 20 seconds.
+            authenticate_gcloud()
             configure_ssh_keys()
             create_firewall_rule()
             create_gcp_instance()
