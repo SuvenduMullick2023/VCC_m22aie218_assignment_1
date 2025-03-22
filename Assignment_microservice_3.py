@@ -14,6 +14,8 @@ import subprocess
 
 from google.cloud import compute_v1
 
+app = FastAPI()
+
 def configure_ssh_keys():
     try:
         print("Configuring SSH keys in project metadata...")
@@ -140,7 +142,7 @@ def create_gcp_instance_old():
 
 
 
-app = FastAPI()
+#app = FastAPI()
 
 cpu_ram_data = []
 stress_ng_process = None
