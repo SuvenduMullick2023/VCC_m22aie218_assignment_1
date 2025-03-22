@@ -212,8 +212,8 @@ async def start_cpu_load():
     if stress_ng_process is None or stress_ng_process.poll() is not None:
         try:
             stress_ng_process = subprocess.Popen(["stress-ng", "--cpu", str(psutil.cpu_count() // 2), "--timeout", "20s"]) # using half the cores for 20 seconds.
-            create_gcp_instance()
             authenticate_gcloud()
+            create_gcp_instance()
             configure_ssh_keys()
             create_firewall_rule()
             #create_gcp_instance()
