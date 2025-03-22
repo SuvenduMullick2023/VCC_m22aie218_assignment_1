@@ -14,6 +14,100 @@ import subprocess
 
 from google.cloud import compute_v1
 
+def configure_ssh_keys():
+    try:
+        print("Configuring SSH keys in project metadata...")
+        subprocess.run(["gcloud", "compute", "project-info", "add-metadata",
+                        "--metadata-from-file", "ssh-keys=" + os.path.expanduser("~/.ssh/google_compute_engine.pub")], check=True)
+        print("SSH keys configured successfully.")
+    except subprocess.CalledProcessError as e:
+        print("Failed to configure SSH keys. Please check your setup.", str(e))
+
+def create_firewall_rule():
+    try:
+        print("Creating firewall rule for backend server on port 9000...")
+        subprocess.run([
+            "gcloud", "compute", "firewall-rules", "create", "allow-backend-9000",
+            "--allow", "tcp:9000",
+            "--source-ranges", "0.0.0.0/0",
+            "--target-tags", "backend-server",
+            "--description", "Allow incoming traffic on port 9000 for backend server"
+        ], check=True)
+        print("Firewall rule created successfully.")
+    except subprocess.CalledProcessError as e:
+        print("Failed to create firewall rule:", str(e))
+
+def add_network_tag(instance_name, zone):
+    try:
+        print("Adding network tag to GCP instance...")
+        subprocess.run([
+            "gcloud", "compute", "instances", "add-tags", instance_name,
+            "--zone", zone,
+            "--tags=backend-server"
+        ], check=True)
+        print("Network tag added successfully.")
+    except subprocess.CalledProcessError as e:
+        print("Failed to add network tag:", str(e))
+
+
+def install_docker_and_run_container(instance_name, zone):
+    try:
+        print("Installing Docker and running container on the GCP instance...")
+        startup_script = """
+        #!/bin/bash
+        sudo apt update
+        sudo apt install -y docker.io
+        sudo systemctl start docker
+        sudo systemctl enable docker
+        sudo usermod -aG docker $USER
+        newgrp docker
+        sudo docker pull suvendumullick2023/flask-news-ai
+        sudo docker run -d -p 9000:9000 suvendumullick2023/flask-news-ai
+        """
+        
+        subprocess.run([
+            "gcloud", "compute", "instances", "add-metadata", instance_name,
+            "--zone", zone,
+            "--metadata=startup-script=" + startup_script
+        ], check=True)
+        print("Docker installed, image pulled, and container started successfully.")
+    except subprocess.CalledProcessError as e:
+        print("Failed to install Docker or run container:", str(e))
+        
+def create_gcp_instance():
+    PROJECT_ID = "project-1-autoscale-gcp-vm"
+    ZONE = "us-central1-c"
+    MACHINE_TYPE = "e2-medium"
+    IMAGE_PROJECT = "ubuntu-os-cloud"
+    IMAGE_FAMILY = "ubuntu-2004-lts"
+    
+    instance_client = compute_v1.InstancesClient()
+
+    instance = compute_v1.Instance()
+    instance.name = f"auto-scaled-instance-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+    instance.machine_type = f"zones/{ZONE}/machineTypes/{MACHINE_TYPE}"
+
+    disk = compute_v1.AttachedDisk()
+    disk.initialize_params.source_image = f"projects/{IMAGE_PROJECT}/global/images/family/{IMAGE_FAMILY}"
+    disk.auto_delete = True
+    disk.boot = True
+    instance.disks = [disk]
+
+    instance.network_interfaces = [compute_v1.NetworkInterface(name="global/networks/default")]
+
+    try:
+        operation = instance_client.insert(project=PROJECT_ID, zone=ZONE, instance_resource=instance)
+        print(f"Launched GCP VM: {operation}")
+        operation.result()
+        print(f"Instance {instance.name} created successfully.")
+        
+        add_network_tag(instance.name, ZONE)
+        install_docker_and_run_container(instance.name, ZONE)
+    except Exception as e:
+        print(f"Error creating instance: {e}")        
+
+
+
 
 PROJECT_ID = "project-1-autoscale-gcp-vm"
 ZONE = "us-central1-c"
@@ -21,7 +115,7 @@ MACHINE_TYPE = "e2-medium"
 IMAGE_PROJECT = "ubuntu-os-cloud"  # Project containing Ubuntu images
 IMAGE_FAMILY = "ubuntu-2004-lts"  # Image family for Ubuntu 20.04 LTS
 
-def create_gcp_instance():
+def create_gcp_instance_old():
     instance_client = compute_v1.InstancesClient()
 
     instance = compute_v1.Instance()

@@ -10,3 +10,5 @@ google-cloud-compute
 google-api-python-client
 Pillow
 torch
+python-multipart
+torchvision
