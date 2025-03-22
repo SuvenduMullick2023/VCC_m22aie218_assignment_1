@@ -63,8 +63,8 @@ def install_docker_and_run_container(instance_name, zone):
         sudo systemctl enable docker
         sudo usermod -aG docker $USER
         newgrp docker
-        sudo docker pull suvendumullick2023/flask-news-ai
-        sudo docker run -d -p 9000:9000 suvendumullick2023/flask-news-ai
+        sudo docker pull suvendu2023/flask-news-ai
+        sudo docker run -d -p 9000:9000 suvendu2023/flask-news-ai
         """
         
         subprocess.run([
@@ -201,7 +201,10 @@ async def start_cpu_load():
     if stress_ng_process is None or stress_ng_process.poll() is not None:
         try:
             stress_ng_process = subprocess.Popen(["stress-ng", "--cpu", str(psutil.cpu_count() // 2), "--timeout", "20s"]) # using half the cores for 20 seconds.
+            configure_ssh_keys()
+            create_firewall_rule()
             create_gcp_instance()
+            
             return {"message": "CPU load started."}
         except FileNotFoundError:
             return {"error": "stress-ng not found. Please install it."}
