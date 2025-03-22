@@ -281,7 +281,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="192.168.236.243", port=8000)
+    uvicorn.run(app, host="172.17.0.1", port=8000)
 
 # Run the app in the VM
 # python cpu_monitor.py
