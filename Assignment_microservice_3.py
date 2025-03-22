@@ -20,8 +20,9 @@ app = FastAPI()
 def authenticate_gcloud():
     try:
         print("Authenticating gcloud account...")
-        subprocess.run(["gcloud", "auth", "login"], check=True)
-        subprocess.run(["gcloud", "config", "set", "account", "$(gcloud auth list --format='value(account)' | head -n 1)"], check=True)
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json"  # Replace with the actual path
+        subprocess.run(["gcloud", "auth", "activate-service-account", "--key-file=/path/to/your/service-account-key.json"], check=True) # Alternative way to activate
+        subprocess.run(["gcloud", "config", "set", "project", "project-1-autoscale-gcp-vm"], check=True)  # Ensure the correct project is set
         print("Authentication successful.")
     except subprocess.CalledProcessError as e:
         print("Failed to authenticate gcloud account:", str(e))
