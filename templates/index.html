@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌎 AI-Powered News Summarizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            text-align: center;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        input {
+            padding: 10px;
+            width: 250px;
+            font-size: 16px;
+            margin: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #news-summary {
+            margin-top: 20px;
+            text-align: left;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            padding: 15px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🌎 AI-Powered News Summarizer</h1>
+    <p>Enter a country name to get the top 10 news headlines summarized by AI.</p>
+
+    <input type="text" id="country" placeholder="Enter country name">
+    <button onclick="fetchNews()">Get News</button>
+
+    <div id="news-summary"></div>
+
+    <script>
+        async function fetchNews() {
+            const country = document.getElementById("country").value.trim();
+            const resultDiv = document.getElementById("news-summary");
+
+            if (!country) {
+                resultDiv.innerHTML = "<p class='error'>Please enter a country name.</p>";
+                return;
+            }
+
+            resultDiv.innerHTML = "<p>Loading news...</p>";
+
+            try {
+                const response = await fetch(`/news?country=${country}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    resultDiv.innerHTML = `<p class='error'>${data.error}</p>`;
+                } else {
+                    resultDiv.innerHTML = `<h2>Summary for ${country}:</h2><pre>${data.summarized_news}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = "<p class='error'>Error fetching news.</p>";
+            }
+        }
+    </script>
+
+</body>
+</html>
