@@ -20,9 +20,10 @@ app = FastAPI()
 def authenticate_gcloud():
     try:
         print("Authenticating gcloud account...")
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json"  # Replace with the actual path
-        subprocess.run(["gcloud", "auth", "activate-service-account", "--key-file=/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json"], check=True) # Alternative way to activate
-        subprocess.run(["gcloud", "config", "set", "project", "project-1-autoscale-gcp-vm"], check=True)  # Ensure the correct project is set
+        key_file = "/home/suvendu/VCC/VCC_m22aie218_assignment_1/project-1-autoscale-gcp-vm-e4be10f24915.json"  # Update with the actual path
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_file
+        subprocess.run(["gcloud", "auth", "activate-service-account", "--key-file", key_file], check=True)
+        subprocess.run(["gcloud", "config", "set", "project", "project-1-autoscale-gcp-vm"], check=True)
         print("Authentication successful.")
     except subprocess.CalledProcessError as e:
         print("Failed to authenticate gcloud account:", str(e))
@@ -99,19 +100,24 @@ def create_gcp_instance():
     instance.machine_type = f"zones/{ZONE}/machineTypes/{MACHINE_TYPE}"
 
     disk = compute_v1.AttachedDisk()
-    disk.initialize_params.source_image = f"projects/{IMAGE_PROJECT}/global/images/family/{IMAGE_FAMILY}"
+    disk.initialize_params = compute_v1.AttachedDiskInitializeParams(
+        source_image=f"projects/{IMAGE_PROJECT}/global/images/family/{IMAGE_FAMILY}"
+    )
     disk.auto_delete = True
     disk.boot = True
     instance.disks = [disk]
 
-    #instance.network_interfaces = [compute_v1.NetworkInterface(name="global/networks/default")]
+    network_interface = compute_v1.NetworkInterface()
+    network_interface.name = "global/networks/default"
+    network_interface.access_configs = [compute_v1.AccessConfig(name="External NAT", type_="ONE_TO_ONE_NAT")]
+    instance.network_interfaces = [network_interface]
 
     try:
         operation = instance_client.insert(project=PROJECT_ID, zone=ZONE, instance_resource=instance)
         print(f"Launched GCP VM: {operation}")
         operation.result()
         print(f"Instance {instance.name} created successfully.")
-        create_firewall_rule()
+        
         add_network_tag(instance.name, ZONE)
         install_docker_and_run_container(instance.name, ZONE)
     except Exception as e:
