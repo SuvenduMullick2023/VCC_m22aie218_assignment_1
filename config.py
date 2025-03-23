@@ -1,4 +1,4 @@
 
 
-GROQ_API_KEY = 
-NEWSDATA_API_KEY =
+API_KEY = 
+API_KEY =
