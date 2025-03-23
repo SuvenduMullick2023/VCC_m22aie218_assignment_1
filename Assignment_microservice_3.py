@@ -72,8 +72,6 @@ def install_docker_and_run_container(instance_name, zone):
         sudo apt install -y docker.io
         sudo systemctl start docker
         sudo systemctl enable docker
-        sudo usermod -aG docker $USER
-        newgrp docker
         sudo docker pull suvendu2023/flask-news-ai
         sudo docker run -d -p 5000:5000 suvendu2023/flask-news-ai
         """
@@ -113,7 +111,7 @@ def create_gcp_instance():
         print(f"Launched GCP VM: {operation}")
         operation.result()
         print(f"Instance {instance.name} created successfully.")
-        
+        create_firewall_rule()
         add_network_tag(instance.name, ZONE)
         install_docker_and_run_container(instance.name, ZONE)
     except Exception as e:
